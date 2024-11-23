@@ -1,28 +1,44 @@
 from django.core.serializers import serialize
 from django.http import HttpResponse, JsonResponse, Http404
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import status, mixins, generics
+from django.contrib.auth.models import User
+from rest_framework import status, mixins, generics, permissions
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
 from rest_framework.views import APIView
 
 from snippets.models import Snippet
-from snippets.serializers import SnippetModelSerializer
+from snippets.permissions import IsOwnerOrReadOnly
+from snippets.serializers import SnippetModelSerializer, UserSerializer
+
+
+class UserList(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+class UserDetail(generics.RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
 # Class based views w/ generic mixins
 
 class SnippetList3(generics.ListCreateAPIView):
     queryset = Snippet.objects.all()
     serializer_class = SnippetModelSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class SnippetDetail3(generics.RetrieveUpdateDestroyAPIView):
     queryset = Snippet.objects.all()
     serializer_class = SnippetModelSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 # Class based views w/ mixins
-
+# DEPRECATED
 class SnippetList2(mixins.ListModelMixin,
                    mixins.CreateModelMixin,
                    generics.GenericAPIView):
@@ -35,6 +51,7 @@ class SnippetList2(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
+# DEPRECATED
 class SnippetDetail2(mixins.RetrieveModelMixin,
                      mixins.UpdateModelMixin,
                      mixins.DestroyModelMixin,
@@ -53,7 +70,7 @@ class SnippetDetail2(mixins.RetrieveModelMixin,
         return self.destroy(request, *args, **kwargs)
 
 # Class based views
-
+# DEPRECATED
 class SnippetList(APIView):
     """
     List all snippets, or create a new snippet
@@ -70,6 +87,7 @@ class SnippetList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# DEPRECATED
 class SnippetDetail(APIView):
     """
     Retrieve, update or delete a snippet instance
@@ -99,7 +117,7 @@ class SnippetDetail(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 # Using rest framework utilities
-
+# DEPRECATED
 @api_view(['GET', 'POST'])
 def list_snippets(request, format=None):
     """
@@ -117,6 +135,7 @@ def list_snippets(request, format=None):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# DEPRECATED
 @api_view(['GET', 'PUT', 'DELETE'])
 def detail_snip(request, pk, format=None):
     """
@@ -143,7 +162,7 @@ def detail_snip(request, pk, format=None):
 
 
 # Using vanilla django
-
+# DEPRECATED
 @csrf_exempt
 def snippet_list(request):
     """
@@ -162,6 +181,7 @@ def snippet_list(request):
             return JsonResponse(serializer.data, status=201)
         return JsonResponse(serializer.errors, status=400)
 
+# DEPRECATED
 @csrf_exempt
 def snippet_detail(request, pk):
     """
